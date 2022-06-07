@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -53,4 +54,10 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims() {
         return [];
     }    
+    public static function changePassword($userId, $newPassword)
+    {
+        $changPassowd            = User:: find($userId)->first();
+        $changPassowd->password  = Hash::make($newPassword);
+        $changPassowd->update();
+    }
 }

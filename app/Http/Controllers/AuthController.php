@@ -99,9 +99,7 @@ class AuthController extends Controller
             if (Hash::check($request->currentPassword, Auth::user()->password)) {
                 try {
                    DB::beginTransaction();
-                   $changPassowd            = User:: find($userId)->first();
-                   $changPassowd->password  = $newPassword;
-                   $changPassowd->update();
+                   User::changePassword($userId, $newPassword);
                    DB::commit();
                    $status = true; 
                 } catch (\Exception $e) {
