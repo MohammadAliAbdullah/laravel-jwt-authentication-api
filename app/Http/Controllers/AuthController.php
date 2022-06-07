@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
-use Validator;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
+    private $success = 200; // successfully
+    private $unauthorised = 401; // unauthorised
     /**
      * Create a new AuthController instance.
      *
@@ -17,25 +20,6 @@ class AuthController extends Controller
     public function __construct()
     {
         $this->middleware('auth:api', ['except' => ['login', 'register']]);
-    }
-    /**
-     * Get a JWT via given credentials.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function login(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required|string|min:6',
-        ]);
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
-        if (!$token = auth()->attempt($validator->validated())) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        return $this->createNewToken($token);
     }
     /**
      * Register a User.
@@ -50,18 +34,62 @@ class AuthController extends Controller
             'password' => 'required|string|confirmed|min:6',
         ]);
         if ($validator->fails()) {
-            return response()->json($validator->errors()->toJson(), 400);
+            return response()->json(["status" => $this->unauthorised, "message" => "Please Input Valid Data", "errors" => $validator->errors()]);
         }
-        $user = User::create(array_merge(
-            $validator->validated(),
-            ['password' => bcrypt($request->password)]
-        ));
-        return response()->json([
-            'message' => 'User successfully registered',
-            'user' => $user
-        ], 201);
+        $user_status = User::where("email", $request->email)->first();
+        if (!is_null($user_status)) {
+            return response()->json(["status" => $this->success, "success" => false, "message" => "Whoops! Email already registered"]);
+        }
+        $user = $this->create($request->all());
+        if (!is_null($user)) {
+            return response()->json(["status" => $this->success, "success" => true, "message" => "Registration completed successfully", "data" => $user]);
+        } else {
+            return response()->json(["status" => $this->unauthorised, "success" => false, "message" => "Failed to register"]);
+        }
+    }
+    /**
+     * Get a JWT via given credentials.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function login(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(["status" =>  $this->unauthorised, "validation_error" => $validator->errors()]);
+        }
+
+        $email_status = User::where("email", $request->email)->first();
+        if (!is_null($email_status)) {
+            if (Hash::check($request->password, $email_status->password)) {
+                $credentials = $request->only('email', 'password');
+                if ($token = Auth::attempt($credentials)) {
+                    return $this->createNewToken($token);
+                }
+            } else {
+                return response()->json(["status" => $this->unauthorised, "success" => false, "message" => "Unable to login. Incorrect password."]);
+            }
+        } else {
+            return response()->json(["status" => $this->unauthorised, "success" => false, "message" => "Email doesnt exist."]);
+        }
+    }
+    protected function create(array $data)
+    {
+        return User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+        ]);
     }
 
+    protected function guard()
+    {
+        return Auth::guard();
+    }
     /**
      * Log the user out (Invalidate the token).
      *
@@ -103,7 +131,10 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => auth()->factory()->getTTL() * 60,
-            'user' => auth()->user()
+            'status' => $this->success,
+            'success' => true,
+            'message' => 'You have logged in successfully',
+            'data' => auth()->user()
         ]);
     }
 }
