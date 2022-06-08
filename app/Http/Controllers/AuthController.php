@@ -79,43 +79,6 @@ class AuthController extends Controller
         }
     }
 
-    public function changePassword(Request $request)
-    {
-        // $validator = Validator::make($request->all(), [
-        //     'currentPassword' => 'required',
-        //     'password' => 'required',
-        //     'passwordConfirmation' => 'required|same:password',
-        // ]);
-
-        // if ($validator->fails()) {
-        //     return response()->json(["status" =>  $this->unauthorised, "validation_error" => $validator->errors()]);
-        // }
-
-        $userId               = Auth::user()->id;
-        $newPassword          = $request->password;
-        $passwordConfirmation = $request->passwordConfirmation;
-
-        if ($newPassword == $passwordConfirmation) {
-            if (Hash::check($request->currentPassword, Auth::user()->password)) {
-                try {
-                   DB::beginTransaction();
-                   User::changePassword($userId, $newPassword);
-                   DB::commit();
-                   $status = true; 
-                } catch (\Exception $e) {
-                   var_dump($e->getMessage());
-                   DB::rollback();
-                   $status = false; 
-                }
-                return response()->json(["status" => ($status) ?$this->success : $this->unauthorised , "success" => $status, "message" => ($status) ? "Password Change Successfully!" : "Password Change Failled!"]);
-            } else {
-                return response()->json(["status" => $this->unauthorised, "success" => false, "message" => "Current password does not matched."]);
-            }
-        } else {
-            return response()->json(["status" => $this->unauthorised, "success" => false, "message" => "The password confirmation and password must match."]);
-        }
-    }
-
     protected function create(array $data)
     {
         return User::create([
