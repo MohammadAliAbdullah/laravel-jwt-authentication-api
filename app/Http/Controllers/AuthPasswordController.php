@@ -13,10 +13,12 @@ use App\Mail\SendMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use App\Traits\notificationMessage;
 
 
 class AuthPasswordController extends Controller
 {
+    use notificationMessage;
     private $success = 200; // successfully
     private $unauthorised = 401; // unauthorised
 
@@ -38,7 +40,7 @@ class AuthPasswordController extends Controller
                     DB::rollback();
                     $status = false;
                 }
-                return response()->json(["status" => ($status) ? $this->success : $this->unauthorised, "success" => $status, "message" => ($status) ? "Password Change Successfully!" : "Password Change Failled!"]);
+                return response()->json(($status) ? $this->successFull() : $this->failed());
             } else {
                 return response()->json(["status" => $this->unauthorised, "success" => false, "message" => "Current password does not matched."]);
             }
@@ -50,7 +52,6 @@ class AuthPasswordController extends Controller
      *  reset password 
      * 1. send link in the user mail 
      * 2. click email url 
-     * 3. 
      */
     public function sendPasswordResetEmail(Request $request)
     {

@@ -56,7 +56,7 @@ class User extends Authenticatable implements JWTSubject
     }    
     public static function changePassword($userId, $newPassword)
     {
-        $changPassowd            = User:: find($userId)->first();
+        $changPassowd            = User:: find($userId);
         $changPassowd->password  = Hash::make($newPassword);
         $changPassowd->update();
     }
